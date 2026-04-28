@@ -9,10 +9,13 @@ from pathlib import Path
 
 from print_outline.config import Config, resolve_config
 from print_outline.fence import FenceLayout
+from print_outline.frontmatter import ensure_project_frontmatter
 from print_outline.index import IndexInputs, generate_index
 from print_outline.render import WriteResult, write_with_fence
 from print_outline.spoolman import SpoolmanClient
-from print_outline.walker import index_filename_for, walk_vault
+from print_outline.walker import index_filename_for, is_project, walk_vault
+
+_PROJECT_FRONTMATTER_DEFAULTS = {"filaments": "[]", "priority": "0"}
 
 logger = logging.getLogger("print_outline")
 
@@ -63,6 +66,9 @@ def main(argv: list[str] | None = None) -> int:
     total_count = 0
     for folder in walk_vault(vault, config):
         total_count += 1
+        index_path = folder.path / index_filename_for(folder.path, vault)
+        if not args.dry_run and is_project(folder.path, vault, config):
+            ensure_project_frontmatter(index_path, _PROJECT_FRONTMATTER_DEFAULTS)
         body = generate_index(
             IndexInputs(
                 folder=folder.path,
@@ -72,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
             ),
         )
         result = write_with_fence(
-            folder.path / index_filename_for(folder.path, vault),
+            index_path,
             body,
             layout,
             dry_run=args.dry_run,
