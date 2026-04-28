@@ -121,10 +121,12 @@ def _image_gallery_section(project: Path, cfg: Config) -> Iterable[str]:
     files = collect_marker_files(project, subdir, cfg.extensions["image"])
     if not files:
         return
-    lines = ["## Images", ""]
-    for path in files:
-        rel = _rel(project, path)
-        lines.append(f"![[{wikilink_target(rel)}]]")
+    embeds = [f"![[{wikilink_target(_rel(project, path))}]]" for path in files]
+    lines = ["## Images", "", md_table_row("", ""), md_table_row("---", "---")]
+    for i in range(0, len(embeds), 2):
+        left = embeds[i]
+        right = embeds[i + 1] if i + 1 < len(embeds) else ""
+        lines.append(md_table_row(left, right))
     yield "\n".join(lines)
 
 
