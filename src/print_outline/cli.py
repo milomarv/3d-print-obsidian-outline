@@ -1,4 +1,4 @@
-"""Command-line entry point. Walks the vault, regenerates each `_index.md`."""
+"""Command-line entry point. Walks the vault, regenerates each folder-note index."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from print_outline.fence import FenceLayout
 from print_outline.index import IndexInputs, generate_index
 from print_outline.render import WriteResult, write_with_fence
 from print_outline.spoolman import SpoolmanClient
-from print_outline.walker import walk_vault
+from print_outline.walker import index_filename_for, walk_vault
 
 logger = logging.getLogger("print_outline")
 
@@ -20,7 +20,7 @@ logger = logging.getLogger("print_outline")
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="outline",
-        description="Regenerate Obsidian _index.md files for a 3D-printing vault.",
+        description="Regenerate Obsidian folder-note indexes for a 3D-printing vault.",
     )
     parser.add_argument("vault", type=Path, help="Path to the vault root.")
     parser.add_argument("--config", type=Path, default=None, help="Override config file path.")
@@ -72,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
             ),
         )
         result = write_with_fence(
-            folder.path / "_index.md",
+            folder.path / index_filename_for(folder.path, vault),
             body,
             layout,
             dry_run=args.dry_run,

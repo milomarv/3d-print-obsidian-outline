@@ -123,11 +123,22 @@ def child_dirs_for_index(folder: Path, config: Config) -> list[Path]:
     )
 
 
-def child_notes_for_index(folder: Path) -> list[Path]:
-    """Return direct child .md files to list in a folder's _index.md."""
-    skip = {"_index.md"}
+def child_notes_for_index(folder: Path, *, index_filename: str) -> list[Path]:
+    """Return direct child .md files to list in a folder's index, skipping the index itself."""
+    skip = {index_filename, "_index.md"}
     return sorted(
         child
         for child in folder.iterdir()
         if child.is_file() and child.suffix.lower() == ".md" and child.name not in skip
     )
+
+
+def index_filename_for(folder: Path, vault: Path) -> str:
+    """Return the filename of the auto-generated index for `folder`.
+
+    Folder-note convention: a folder's index is named after the folder
+    (e.g. `projects/` → `projects.md`). The vault root uses its own
+    directory basename so the rule applies uniformly.
+    """
+    name = folder.name if folder != vault else vault.name
+    return f"{name}.md"

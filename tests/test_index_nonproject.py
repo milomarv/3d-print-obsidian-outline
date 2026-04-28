@@ -17,7 +17,7 @@ def test_root_lists_projects_subfolder(vault: Path, config: Config) -> None:
     make_project(vault / "projects", "keychain", cad=["a.step"])
     body = generate_index(IndexInputs(folder=vault, vault=vault, config=config, spoolman=None))
     assert "## Folders" in body
-    assert "[[projects/_index|projects]]" in body
+    assert "[[projects/projects|projects]]" in body
 
 
 def test_projects_root_lists_children(vault: Path, config: Config) -> None:
@@ -26,8 +26,8 @@ def test_projects_root_lists_children(vault: Path, config: Config) -> None:
     body = generate_index(
         IndexInputs(folder=vault / "projects", vault=vault, config=config, spoolman=None),
     )
-    assert "[[keychain/_index|keychain]]" in body
-    assert "[[spool-holder/_index|spool-holder]]" in body
+    assert "[[keychain/keychain|keychain]]" in body
+    assert "[[spool-holder/spool-holder|spool-holder]]" in body
 
 
 def test_non_project_folder_omits_file_tables(vault: Path, config: Config) -> None:

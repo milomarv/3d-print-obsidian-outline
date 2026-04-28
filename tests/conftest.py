@@ -60,7 +60,7 @@ def make_project(parent: Path, name: str, **kwargs: object) -> Path:
     _seed_files(project / "3mf", spec.slice_files, payload=b"z" * 300)
     _seed_files(project / "images", spec.images, payload=b"i" * 50)
     if spec.notes is not None:
-        (project / "notes.md").write_text(spec.notes, encoding="utf-8")
+        (project / f"{name}.md").write_text(spec.notes, encoding="utf-8")
     return project
 
 

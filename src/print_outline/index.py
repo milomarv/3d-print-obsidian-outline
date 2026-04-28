@@ -17,6 +17,7 @@ from print_outline.walker import (
     child_notes_for_index,
     child_subprojects,
     collect_marker_files,
+    index_filename_for,
     is_project,
 )
 
@@ -53,12 +54,13 @@ def generate_index(inputs: IndexInputs) -> str:
 def _non_project_sections(inputs: IndexInputs) -> Iterable[str]:
     cfg = inputs.config
     children = child_dirs_for_index(inputs.folder, cfg)
-    notes = child_notes_for_index(inputs.folder)
+    own_index = index_filename_for(inputs.folder, inputs.vault)
+    notes = child_notes_for_index(inputs.folder, index_filename=own_index)
 
     if children:
         lines = ["## Folders", ""]
         lines.extend(
-            f"- [[{wikilink_target(_rel(inputs.folder, child))}/_index|{child.name}]]"
+            f"- [[{_child_index_link(inputs.folder, child, inputs.vault)}|{child.name}]]"
             for child in children
         )
         yield "\n".join(lines)
@@ -72,6 +74,12 @@ def _non_project_sections(inputs: IndexInputs) -> Iterable[str]:
         yield "\n".join(lines)
 
 
+def _child_index_link(parent: Path, child: Path, vault: Path) -> str:
+    rel = _rel(parent, child)
+    child_index_stem = index_filename_for(child, vault).removesuffix(".md")
+    return f"{wikilink_target(rel)}/{child_index_stem}"
+
+
 def _project_sections(inputs: IndexInputs) -> Iterable[str]:
     cfg = inputs.config
     project = inputs.folder
@@ -81,7 +89,7 @@ def _project_sections(inputs: IndexInputs) -> Iterable[str]:
     yield from _file_table_section(project, cfg, kind="slice", heading="Slicer (3MF / GCODE)")
     yield from _image_gallery_section(project, cfg)
     yield from _subprojects_section(project, inputs.vault, cfg)
-    yield from _filaments_section(project, cfg, inputs.spoolman)
+    yield from _filaments_section(project, inputs.vault, cfg, inputs.spoolman)
 
 
 def _file_table_section(project: Path, cfg: Config, *, kind: str, heading: str) -> Iterable[str]:
@@ -125,15 +133,21 @@ def _subprojects_section(project: Path, vault: Path, cfg: Config) -> Iterable[st
     if not subprojects:
         return
     lines = ["## Sub-projects", ""]
-    for child in subprojects:
-        rel = _rel(project, child)
-        lines.append(f"- [[{wikilink_target(rel)}/_index|{child.name}]]")
+    lines.extend(
+        f"- [[{_child_index_link(project, child, vault)}|{child.name}]]"
+        for child in subprojects
+    )
     yield "\n".join(lines)
 
 
-def _filaments_section(project: Path, cfg: Config, client: SpoolmanClient | None) -> Iterable[str]:
-    notes = project / "notes.md"
-    ids = read_filaments(notes)
+def _filaments_section(
+    project: Path,
+    vault: Path,
+    cfg: Config,
+    client: SpoolmanClient | None,
+) -> Iterable[str]:
+    index_path = project / index_filename_for(project, vault)
+    ids = read_filaments(index_path)
     if not ids:
         return
     if client is None or not cfg.spoolman_enabled:

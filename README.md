@@ -1,6 +1,6 @@
 # 3d-print-outline
 
-Auto-generates Obsidian `_index.md` files for a 3D-printing project vault. Walks the vault, writes one `_index.md` per folder, lists CAD/STL/3MF assets per project, embeds image galleries, links sub-projects, and pulls filament metadata from Spoolman. Idempotent, fence-protected, safe to re-run from cron / n8n / a skill.
+Auto-generates Obsidian folder-note indexes for a 3D-printing project vault. Walks the vault, writes one `<folder>.md` index per folder (folder-note convention), lists CAD/STL/3MF assets per project, embeds image galleries, links sub-projects, and pulls filament metadata from Spoolman. Idempotent, fence-protected, safe to re-run from cron / n8n / a skill.
 
 ## Prerequisites
 
@@ -23,7 +23,7 @@ outline --help
 
 ## Usage
 
-Regenerate all `_index.md` files in your vault:
+Regenerate all folder-note indexes in your vault:
 
 ```bash
 outline /home/milomarv/3d-print-vault
@@ -42,20 +42,23 @@ The expected structure is:
 
 ```
 <vault>/
-├── _index.md              (auto-generated)
+├── <vault-name>.md                  (auto-generated; folder-note for the vault root)
 └── projects/
+    ├── projects.md                  (auto-generated; folder-note for projects/)
     └── <project-slug>/
-        ├── _index.md      (auto-generated; richer than top-level)
-        ├── notes.md       (user-edited; carries filaments metadata)
-        ├── cad/           (parametric / native CAD source)
-        ├── stl/           (mesh exports)
-        ├── 3mf/           (sliced output: .3mf, .gcode, .bgcode)
-        └── images/        (previews; embedded in _index.md)
+        ├── <project-slug>.md        (auto-generated below the AUTO fence;
+        │                             user-edited frontmatter & prose above/below it)
+        ├── cad/                     (parametric / native CAD source)
+        ├── stl/                     (mesh exports)
+        ├── 3mf/                     (sliced output: .3mf, .gcode, .bgcode)
+        └── images/                  (previews; embedded in the project index)
 ```
+
+The folder-note convention names every folder's index after the folder itself (`projects/` → `projects.md`, `keychain/` → `keychain.md`). The vault root uses its own directory basename.
 
 A folder under `projects/` is recognized as a **project** if it directly contains any of: `cad/`, `stl/`, `3mf/`, or `images/`.
 
-Projects can nest: `projects/<parent>/<child>/` with the same marker subdirs creates a sub-project. Both parent and child get an `_index.md`. The parent's index lists children under "Sub-projects" and excludes their files from parent tables.
+Projects can nest: `projects/<parent>/<child>/` with the same marker subdirs creates a sub-project. Both parent and child get their own folder-note index. The parent's index lists children under "Sub-projects" and excludes their files from parent tables.
 
 ## Fence-Marker Contract
 
@@ -73,20 +76,25 @@ Your hand-written prose, curated tables, photo commentary, etc. are preserved.
 
 **Idempotency**: If regenerated content matches the existing content byte-for-byte, the file is not rewritten. This protects file modification times from being unnecessarily updated (important for tools like Syncthing).
 
-**Protected files**: The tool never modifies `notes.md`, asset folders (`cad/`, `stl/`, `3mf/`, `images/`), `.obsidian/`, or `.stignore`.
+**Protected files**: The tool only writes between the AUTO fences inside each folder's index file, and never modifies asset folders (`cad/`, `stl/`, `3mf/`, `images/`), `.obsidian/`, or `.stignore`.
 
 ## Filament Linking (Spoolman Integration)
 
-Projects can reference spools from [Spoolman](https://github.com/donkie/spoolman) via YAML frontmatter in `notes.md`:
+Projects can reference spools from [Spoolman](https://github.com/donkie/spoolman) via YAML frontmatter at the top of the project's index file (above the BEGIN AUTO fence — preserved across regenerations):
 
 ```markdown
 ---
 filaments: [12, 34]
 ---
-# Project notes...
+
+<!-- BEGIN AUTO -->
+... regenerated content ...
+<!-- END AUTO -->
+
+Hand-written prose lives below the END AUTO fence.
 ```
 
-The tool fetches spool metadata from the Spoolman API, caches results in-process, and deduplicates across a single run. A Filaments table is rendered in the project's `_index.md` with material, color, weight, and other spool details.
+The tool fetches spool metadata from the Spoolman API, caches results in-process, and deduplicates across a single run. A Filaments table is rendered inside the AUTO block with material, color, weight, and other spool details.
 
 If the Spoolman API is unreachable or disabled via `--no-spoolman`, the tool falls back to displaying the raw spool IDs.
 
