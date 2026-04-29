@@ -60,7 +60,7 @@ A folder under `projects/` is recognized as a **project** if it directly contain
 
 Projects can nest: `projects/<parent>/<child>/` with the same marker subdirs creates a sub-project. Both parent and child get their own folder-note index. The parent's index lists children under "Sub-projects" and excludes their files from parent tables.
 
-Image galleries render as a 2-column markdown table, with embeds placed side-by-side (two per row). When the image count is odd, an empty cell fills the trailing row.
+Image galleries render as a responsive 2-column HTML grid with embedded images. To enable Obsidian's graph view to pick up image relationships, a hidden `<details>` block with bare `[[wikilinks]]` to each image is included below the gallery.
 
 ## Fence-Marker Contract
 

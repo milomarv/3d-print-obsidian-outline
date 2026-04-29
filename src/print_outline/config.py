@@ -15,9 +15,22 @@ from typing import Any
 DEFAULTS: dict[str, Any] = {
     "extensions": {
         "cad": [
-            "step", "stp", "iges", "igs", "f3d", "scad", "obj",
-            "sldprt", "sldasm", "slddrw", "sldlfp",
-            "ipt", "x_t", "x_b", "3dm", "prt",
+            "step",
+            "stp",
+            "iges",
+            "igs",
+            "f3d",
+            "scad",
+            "obj",
+            "sldprt",
+            "sldasm",
+            "slddrw",
+            "sldlfp",
+            "ipt",
+            "x_t",
+            "x_b",
+            "3dm",
+            "prt",
         ],
         "stl": ["stl"],
         "slice": ["3mf", "gcode", "bgcode"],
@@ -78,11 +91,7 @@ class Config:
 def _deep_merge(base: dict[str, Any], over: dict[str, Any]) -> dict[str, Any]:
     out = dict(base)
     for key, value in over.items():
-        if (
-            key in out
-            and isinstance(out[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in out and isinstance(out[key], dict) and isinstance(value, dict):
             out[key] = _deep_merge(out[key], value)
         else:
             out[key] = value

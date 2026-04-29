@@ -48,6 +48,9 @@ def test_images_gallery_embeds(vault: Path, config: Config) -> None:
     assert 'src="images/a.jpg"' in body
     assert 'src="images/b.png"' in body
     assert "grid-template-columns:1fr 1fr" in body
+    assert "<details><summary>Image graph links</summary>" in body
+    assert "[[images/a.jpg]]" in body
+    assert "[[images/b.png]]" in body
 
 
 def test_empty_project_omits_empty_tables(vault: Path, config: Config) -> None:

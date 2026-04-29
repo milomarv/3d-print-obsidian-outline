@@ -46,16 +46,12 @@ def generate_index(inputs: IndexInputs) -> str:
     if is_project(folder, inputs.vault, inputs.config):
         priority = read_priority(folder / index_filename_for(folder, inputs.vault))
         if priority > 0:
-            sections.append(f"**Priority:** {_priority_stars(priority)}")
+            sections.append(f"**Priority:** {priority}")
         sections.extend(_project_sections(inputs))
     else:
         sections.extend(_non_project_sections(inputs))
 
     return "\n\n".join(s.rstrip() for s in sections if s.strip())
-
-
-def _priority_stars(priority: int) -> str:
-    return "★" * priority
 
 
 def _child_priority(child: Path, vault: Path, config: Config) -> int:
@@ -71,7 +67,7 @@ def _sort_by_priority(children: list[Path], vault: Path, config: Config) -> list
 def _link_with_priority(parent: Path, child: Path, vault: Path, config: Config) -> str:
     target = _child_index_link(parent, child, vault)
     priority = _child_priority(child, vault, config)
-    suffix = f" — {_priority_stars(priority)}" if priority > 0 else ""
+    suffix = f" — Priority: {priority}" if priority > 0 else ""
     return f"- [[{target}|{child.name}]]{suffix}"
 
 
@@ -149,10 +145,23 @@ def _image_gallery_section(project: Path, cfg: Config) -> Iterable[str]:
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">',
     ]
     lines.extend(
-        f'<img src="{wikilink_target(_rel(project, path))}" style="width:100%;">'
-        for path in files
+        f'<img src="{wikilink_target(_rel(project, path))}" style="width:100%;">' for path in files
     )
     lines.append("</div>")
+    # Graph-edge sidecar: bare wikilinks so Obsidian's graph view picks up the
+    # images. Hidden behind <details> so they don't clutter reader mode.
+    # Blank lines around the list are required for Obsidian to switch back to
+    # markdown parsing inside the HTML block.
+    lines.append("")
+    lines.append("<details><summary>Image graph links</summary>")
+    lines.append("")
+    lines.extend(f"- [[{wikilink_target(_rel(project, path))}]]" for path in files)
+    lines.append("")
+    lines.append("</details>")
+    # Extra spacer line so reader mode shows a clear gap before the next
+    # section heading. Non-whitespace so it survives rstrip in generate_index.
+    lines.append("")
+    lines.append("<br/>")
     yield "\n".join(lines)
 
 
