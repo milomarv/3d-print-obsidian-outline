@@ -82,6 +82,23 @@ def _walk(
         yield from _walk(child, vault, config, inside_project=project_carry)
 
 
+def ensure_marker_subdirs(folder: Path, config: Config) -> list[str]:
+    """Create any missing marker subdirs (`cad/`, `stl/`, `3mf/`, `images/`) in `folder`.
+
+    Returns the names actually created; idempotent — existing subdirs are left
+    untouched. Lets the CLI scaffold a project folder so the user can drop files
+    straight into a synced `images/` (or CAD/STL/3MF) instead of the folder being
+    missing first. Syncthing propagates the empty dirs to every device.
+    """
+    created: list[str] = []
+    for sub in config.marker_subdirs:
+        target = folder / sub
+        if not target.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+            created.append(sub)
+    return created
+
+
 def collect_marker_files(
     project: Path,
     subdir: str,
@@ -124,12 +141,20 @@ def child_dirs_for_index(folder: Path, config: Config) -> list[Path]:
 
 
 def child_notes_for_index(folder: Path, *, index_filename: str) -> list[Path]:
-    """Return direct child .md files to list in a folder's index, skipping the index itself."""
+    """Return direct child .md files to list in a folder's index, skipping the index itself.
+
+    Also skips the auto-generated `_priorities-<state>.md` manifests (matched by
+    the `_priorities` prefix, so the legacy single-file name is skipped too);
+    they would otherwise appear under "Notes" in the projects folder index.
+    """
     skip = {index_filename, "_index.md"}
     return sorted(
         child
         for child in folder.iterdir()
-        if child.is_file() and child.suffix.lower() == ".md" and child.name not in skip
+        if child.is_file()
+        and child.suffix.lower() == ".md"
+        and child.name not in skip
+        and not child.name.startswith("_priorities")
     )
 
 

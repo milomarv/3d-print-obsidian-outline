@@ -45,12 +45,12 @@ def test_images_gallery_embeds(vault: Path, config: Config) -> None:
         IndexInputs(folder=project, vault=vault, config=config, spoolman=None),
     )
     assert "## Images" in body
-    assert 'src="images/a.jpg"' in body
-    assert 'src="images/b.png"' in body
+    assert 'src="projects/keychain/images/a.jpg"' in body
+    assert 'src="projects/keychain/images/b.png"' in body
     assert "grid-template-columns:1fr 1fr" in body
     assert "<details><summary>Image graph links</summary>" in body
-    assert "[[images/a.jpg]]" in body
-    assert "[[images/b.png]]" in body
+    assert "[[projects/keychain/images/a.jpg]]" in body
+    assert "[[projects/keychain/images/b.png]]" in body
 
 
 def test_empty_project_omits_empty_tables(vault: Path, config: Config) -> None:
@@ -88,17 +88,18 @@ def test_filament_section_skipped_without_frontmatter(vault: Path, config: Confi
     assert "## Filaments" not in body
 
 
-def test_priority_renders_stars_in_project_header(vault: Path, config: Config) -> None:
+def test_priority_renders_integer_in_project_header(vault: Path, config: Config) -> None:
     project = make_project(
         vault / "projects",
         "keychain",
         cad=["a.step"],
-        notes="---\npriority: 4\n---\n",
+        notes="---\ntags: [prio/4]\n---\n",
     )
     body = generate_index(
         IndexInputs(folder=project, vault=vault, config=config, spoolman=None),
     )
-    assert "**Priority:** ★★★★" in body
+    assert "**Priority:** 4" in body
+    assert "★" not in body
 
 
 def test_priority_orders_and_badges_children(vault: Path, config: Config) -> None:
@@ -106,19 +107,19 @@ def test_priority_orders_and_badges_children(vault: Path, config: Config) -> Non
         vault / "projects",
         "low",
         cad=["a.step"],
-        notes="---\npriority: 1\n---\n",
+        notes="---\ntags: [prio/1]\n---\n",
     )
     make_project(
         vault / "projects",
         "high",
         cad=["b.step"],
-        notes="---\npriority: 5\n---\n",
+        notes="---\ntags: [prio/5]\n---\n",
     )
     body = generate_index(
         IndexInputs(folder=vault / "projects", vault=vault, config=config, spoolman=None),
     )
-    high_pos = body.index("[[high/high|high]]")
-    low_pos = body.index("[[low/low|low]]")
+    high_pos = body.index("[[projects/high/high|high]]")
+    low_pos = body.index("[[projects/low/low|low]]")
     assert high_pos < low_pos
-    assert "[[high/high|high]] — ★★★★★" in body
-    assert "[[low/low|low]] — ★" in body
+    assert "[[projects/high/high|high]] — Priority: 5" in body
+    assert "[[projects/low/low|low]] — Priority: 1" in body

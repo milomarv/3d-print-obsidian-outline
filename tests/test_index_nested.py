@@ -18,7 +18,7 @@ def test_parent_lists_child_under_subprojects(vault: Path, config: Config) -> No
     make_project(parent, "child", cad=["child.step"])
     body = generate_index(IndexInputs(folder=parent, vault=vault, config=config, spoolman=None))
     assert "## Sub-projects" in body
-    assert "[[child/child|child]]" in body
+    assert "[[projects/parent/child/child|child]]" in body
 
 
 def test_parent_tables_exclude_childs_files(vault: Path, config: Config) -> None:

@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from print_outline.formatting import human_size, iso_date, md_table_row, wikilink_target
 from print_outline.frontmatter import read_filaments, read_priority
+from print_outline.maintenance import is_maintenance_folder, render_maintenance_tasks
 from print_outline.walker import (
     child_dirs_for_index,
     child_notes_for_index,
@@ -64,8 +65,8 @@ def _sort_by_priority(children: list[Path], vault: Path, config: Config) -> list
     return sorted(children, key=lambda c: (-_child_priority(c, vault, config), c.name))
 
 
-def _link_with_priority(parent: Path, child: Path, vault: Path, config: Config) -> str:
-    target = _child_index_link(parent, child, vault)
+def _link_with_priority(child: Path, vault: Path, config: Config) -> str:
+    target = _child_index_link(child, vault)
     priority = _child_priority(child, vault, config)
     suffix = f" — Priority: {priority}" if priority > 0 else ""
     return f"- [[{target}|{child.name}]]{suffix}"
@@ -75,27 +76,32 @@ def _non_project_sections(inputs: IndexInputs) -> Iterable[str]:
     cfg = inputs.config
     children = child_dirs_for_index(inputs.folder, cfg)
     own_index = index_filename_for(inputs.folder, inputs.vault)
-    notes = child_notes_for_index(inputs.folder, index_filename=own_index)
 
     if children:
         ordered = _sort_by_priority(list(children), inputs.vault, cfg)
         lines = ["## Folders"]
-        lines.extend(
-            _link_with_priority(inputs.folder, child, inputs.vault, cfg) for child in ordered
-        )
+        lines.extend(_link_with_priority(child, inputs.vault, cfg) for child in ordered)
         yield "\n".join(lines)
 
+    if is_maintenance_folder(inputs.folder, inputs.vault, cfg):
+        # Maintenance folder gets a `## Tasks` snapshot table instead of the
+        # generic `## Notes` listing — same task slugs but with schedule
+        # metadata and a today-due flag for the maintenance skill.
+        yield render_maintenance_tasks(inputs.folder)
+        return
+
+    notes = child_notes_for_index(inputs.folder, index_filename=own_index)
     if notes:
         lines = ["## Notes"]
         for note in notes:
             stem = note.stem
-            target = wikilink_target(_rel(inputs.folder, note.with_suffix("")))
+            target = wikilink_target(note.with_suffix("").relative_to(inputs.vault))
             lines.append(f"- [[{target}|{stem}]]")
         yield "\n".join(lines)
 
 
-def _child_index_link(parent: Path, child: Path, vault: Path) -> str:
-    rel = _rel(parent, child)
+def _child_index_link(child: Path, vault: Path) -> str:
+    rel = child.relative_to(vault)
     child_index_stem = index_filename_for(child, vault).removesuffix(".md")
     return f"{wikilink_target(rel)}/{child_index_stem}"
 
@@ -103,16 +109,21 @@ def _child_index_link(parent: Path, child: Path, vault: Path) -> str:
 def _project_sections(inputs: IndexInputs) -> Iterable[str]:
     cfg = inputs.config
     project = inputs.folder
+    vault = inputs.vault
 
-    yield from _file_table_section(project, cfg, kind="cad", heading="CAD")
-    yield from _file_table_section(project, cfg, kind="stl", heading="STL")
-    yield from _file_table_section(project, cfg, kind="slice", heading="Slicer (3MF / GCODE)")
-    yield from _filaments_section(project, inputs.vault, cfg, inputs.spoolman)
-    yield from _image_gallery_section(project, cfg)
-    yield from _subprojects_section(project, inputs.vault, cfg)
+    yield from _file_table_section(project, vault, cfg, kind="cad", heading="CAD")
+    yield from _file_table_section(project, vault, cfg, kind="stl", heading="STL")
+    yield from _file_table_section(
+        project, vault, cfg, kind="slice", heading="Slicer (3MF / GCODE)",
+    )
+    yield from _filaments_section(project, vault, cfg, inputs.spoolman)
+    yield from _image_gallery_section(project, vault, cfg)
+    yield from _subprojects_section(project, vault, cfg)
 
 
-def _file_table_section(project: Path, cfg: Config, *, kind: str, heading: str) -> Iterable[str]:
+def _file_table_section(
+    project: Path, vault: Path, cfg: Config, *, kind: str, heading: str,
+) -> Iterable[str]:
     subdir = cfg.project_subdirs[kind]
     files = collect_marker_files(project, subdir, cfg.extensions[kind])
     if not files:
@@ -123,8 +134,7 @@ def _file_table_section(project: Path, cfg: Config, *, kind: str, heading: str) 
         md_table_row("---", "---", "---"),
     ]
     for path in files:
-        rel = _rel(project, path)
-        target = wikilink_target(rel)
+        target = wikilink_target(path.relative_to(vault))
         lines.append(
             md_table_row(
                 f"[[{target}|{path.name}]]",
@@ -135,7 +145,7 @@ def _file_table_section(project: Path, cfg: Config, *, kind: str, heading: str) 
     yield "\n".join(lines)
 
 
-def _image_gallery_section(project: Path, cfg: Config) -> Iterable[str]:
+def _image_gallery_section(project: Path, vault: Path, cfg: Config) -> Iterable[str]:
     subdir = cfg.project_subdirs["image"]
     files = collect_marker_files(project, subdir, cfg.extensions["image"])
     if not files:
@@ -145,7 +155,8 @@ def _image_gallery_section(project: Path, cfg: Config) -> Iterable[str]:
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">',
     ]
     lines.extend(
-        f'<img src="{wikilink_target(_rel(project, path))}" style="width:100%;">' for path in files
+        f'<img src="{wikilink_target(path.relative_to(vault))}" style="width:100%;">'
+        for path in files
     )
     lines.append("</div>")
     # Graph-edge sidecar: bare wikilinks so Obsidian's graph view picks up the
@@ -155,13 +166,11 @@ def _image_gallery_section(project: Path, cfg: Config) -> Iterable[str]:
     lines.append("")
     lines.append("<details><summary>Image graph links</summary>")
     lines.append("")
-    lines.extend(f"- [[{wikilink_target(_rel(project, path))}]]" for path in files)
+    lines.extend(
+        f"- [[{wikilink_target(path.relative_to(vault))}]]" for path in files
+    )
     lines.append("")
     lines.append("</details>")
-    # Extra spacer line so reader mode shows a clear gap before the next
-    # section heading. Non-whitespace so it survives rstrip in generate_index.
-    lines.append("")
-    lines.append("<br/>")
     yield "\n".join(lines)
 
 
@@ -171,7 +180,7 @@ def _subprojects_section(project: Path, vault: Path, cfg: Config) -> Iterable[st
         return
     ordered = _sort_by_priority(list(subprojects), vault, cfg)
     lines = ["## Sub-projects"]
-    lines.extend(_link_with_priority(project, child, vault, cfg) for child in ordered)
+    lines.extend(_link_with_priority(child, vault, cfg) for child in ordered)
     yield "\n".join(lines)
 
 
@@ -226,10 +235,6 @@ def _color_cell(color_hex: str | None) -> str:
 def _filament_fallback(ids: list[int]) -> str:
     listed = ", ".join(str(i) for i in ids)
     return f"## Filaments\n\n_(Spoolman unreachable — listed IDs: {listed})_"
-
-
-def _rel(base: Path, target: Path) -> Path:
-    return target.relative_to(base)
 
 
 def _humanise(name: str) -> str:

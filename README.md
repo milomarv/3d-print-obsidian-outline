@@ -26,7 +26,7 @@ outline --help
 Regenerate all folder-note indexes in your vault:
 
 ```bash
-outline /home/milomarv/Projects/obsidian/vault/3d-print
+outline /mnt/seagate4t/obsidian-vault/3d-print
 ```
 
 ### Flags
@@ -123,7 +123,7 @@ The tool is designed to run periodically or on-demand via workflows. Example n8n
 The `homenet-outline-runner` workflow runs `outline` and `graphify-outline` in parallel branches (triggered manually or on schedule) over SSH:
 
 ```bash
-~/.local/bin/outline /home/milomarv/Projects/obsidian/vault/3d-print
+~/.local/bin/outline /mnt/seagate4t/obsidian-vault/3d-print
 ```
 
 This approach ensures your vault stays up-to-date without manual intervention.

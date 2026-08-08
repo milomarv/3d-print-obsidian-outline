@@ -12,7 +12,8 @@ slice = ["3mf", "gcode", "bgcode"]
 image = ["jpg", "jpeg", "png", "heic", "webp"]
 
 [layout]
-project_root = "projects"
+project_root     = "projects"
+maintenance_root = "maintenance"
 
 [layout.project_subdirs]
 cad = "cad"

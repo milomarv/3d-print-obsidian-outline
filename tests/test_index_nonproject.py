@@ -26,8 +26,8 @@ def test_projects_root_lists_children(vault: Path, config: Config) -> None:
     body = generate_index(
         IndexInputs(folder=vault / "projects", vault=vault, config=config, spoolman=None),
     )
-    assert "[[keychain/keychain|keychain]]" in body
-    assert "[[spool-holder/spool-holder|spool-holder]]" in body
+    assert "[[projects/keychain/keychain|keychain]]" in body
+    assert "[[projects/spool-holder/spool-holder|spool-holder]]" in body
 
 
 def test_non_project_folder_omits_file_tables(vault: Path, config: Config) -> None:
@@ -46,4 +46,4 @@ def test_notes_in_non_project_folder_listed(vault: Path, config: Config) -> None
         IndexInputs(folder=vault / "projects" / "wip", vault=vault, config=config, spoolman=None),
     )
     assert "## Notes" in body
-    assert "[[ideas|ideas]]" in body
+    assert "[[projects/wip/ideas|ideas]]" in body

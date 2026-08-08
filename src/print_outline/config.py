@@ -38,6 +38,7 @@ DEFAULTS: dict[str, Any] = {
     },
     "layout": {
         "project_root": "projects",
+        "maintenance_root": "maintenance",
         "project_subdirs": {
             "cad": "cad",
             "stl": "stl",
@@ -70,6 +71,7 @@ class Config:
 
     extensions: dict[str, list[str]]
     project_root: str
+    maintenance_root: str
     project_subdirs: dict[str, str]
     exclude_dirs: set[str]
     exclude_globs: list[str]
@@ -129,6 +131,7 @@ def _materialise(d: dict[str, Any]) -> Config:
     return Config(
         extensions=extensions,
         project_root=str(layout["project_root"]),
+        maintenance_root=str(layout.get("maintenance_root", "maintenance")),
         project_subdirs=dict(layout["project_subdirs"]),
         exclude_dirs=set(exclude["dirs"]),
         exclude_globs=list(exclude["globs"]),

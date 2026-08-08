@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from print_outline.walker import (
+    child_notes_for_index,
     child_subprojects,
     collect_marker_files,
     walk_vault,
@@ -86,3 +87,16 @@ def test_non_project_folder_not_classified(vault: Path, config: Config) -> None:
     (vault / "projects" / "wip").mkdir()
     classifications = {f.path: f.is_project for f in walk_vault(vault, config)}
     assert classifications[vault / "projects" / "wip"] is False
+
+
+def test_child_notes_skip_priority_manifests(vault: Path) -> None:
+    projects = vault / "projects"
+    (projects / "projects.md").write_text("# projects\n", encoding="utf-8")
+    (projects / "_priorities-ongoing.md").write_text("x\n", encoding="utf-8")
+    (projects / "_priorities-idea.md").write_text("x\n", encoding="utf-8")
+    (projects / "_priorities-finished.md").write_text("x\n", encoding="utf-8")
+    (projects / "real-note.md").write_text("x\n", encoding="utf-8")
+
+    notes = [p.name for p in child_notes_for_index(projects, index_filename="projects.md")]
+
+    assert notes == ["real-note.md"]
