@@ -210,11 +210,11 @@ def _filaments_section(
     ]
     for spool_id, spool in spools:
         if spool is None:
-            link = f"[#{spool_id}]({cfg.spoolman_ui_base_url}/spool/{spool_id})"
+            link = f"[#{spool_id}]({cfg.spoolman_ui_base_url}/spool/show/{spool_id})"
             lines.append(md_table_row(link, "_unreachable_", "", ""))
             continue
         link_text = f"#{spool_id} — {spool.display_name}".rstrip(" —")
-        link = f"[{link_text}]({cfg.spoolman_ui_base_url}/spool/{spool_id})"
+        link = f"[{link_text}]({cfg.spoolman_ui_base_url}/spool/show/{spool_id})"
         color_cell = _color_cell(spool.color_hex)
         lines.append(md_table_row(link, spool.material, color_cell, spool.vendor_name))
     yield "\n".join(lines)
