@@ -114,15 +114,25 @@ def _project_sections(inputs: IndexInputs) -> Iterable[str]:
     yield from _file_table_section(project, vault, cfg, kind="cad", heading="CAD")
     yield from _file_table_section(project, vault, cfg, kind="stl", heading="STL")
     yield from _file_table_section(
-        project, vault, cfg, kind="slice", heading="Slicer (3MF / GCODE)",
+        project,
+        vault,
+        cfg,
+        kind="slice",
+        heading="Slicer (3MF / GCODE)",
     )
+    yield from _file_table_section(project, vault, cfg, kind="sliced", heading="Sliced (hub)")
     yield from _filaments_section(project, vault, cfg, inputs.spoolman)
     yield from _image_gallery_section(project, vault, cfg)
     yield from _subprojects_section(project, vault, cfg)
 
 
 def _file_table_section(
-    project: Path, vault: Path, cfg: Config, *, kind: str, heading: str,
+    project: Path,
+    vault: Path,
+    cfg: Config,
+    *,
+    kind: str,
+    heading: str,
 ) -> Iterable[str]:
     subdir = cfg.project_subdirs[kind]
     files = collect_marker_files(project, subdir, cfg.extensions[kind])
@@ -166,9 +176,7 @@ def _image_gallery_section(project: Path, vault: Path, cfg: Config) -> Iterable[
     lines.append("")
     lines.append("<details><summary>Image graph links</summary>")
     lines.append("")
-    lines.extend(
-        f"- [[{wikilink_target(path.relative_to(vault))}]]" for path in files
-    )
+    lines.extend(f"- [[{wikilink_target(path.relative_to(vault))}]]" for path in files)
     lines.append("")
     lines.append("</details>")
     yield "\n".join(lines)

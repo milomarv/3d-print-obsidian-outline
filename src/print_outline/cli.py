@@ -125,7 +125,7 @@ def _scaffold_project_dirs(vault: Path, config: Config, *, dry_run: bool) -> Non
     for folder in list(walk_vault(vault, config)):
         if not _should_scaffold(folder, vault, config):
             continue
-        missing = [sub for sub in config.marker_subdirs if not (folder.path / sub).is_dir()]
+        missing = [sub for sub in config.scaffold_subdirs if not (folder.path / sub).is_dir()]
         if not missing:
             continue
         if dry_run:

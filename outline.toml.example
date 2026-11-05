@@ -10,6 +10,7 @@ cad   = ["step", "stp", "iges", "igs", "f3d", "scad", "obj", "sldprt", "sldasm",
 stl   = ["stl"]
 slice = ["3mf", "gcode", "bgcode"]
 image = ["jpg", "jpeg", "png", "heic", "webp"]
+sliced = []
 
 [layout]
 project_root     = "projects"
@@ -20,6 +21,7 @@ cad = "cad"
 stl = "stl"
 slice = "3mf"
 image = "images"
+sliced = "sliced"
 
 [exclude]
 dirs  = [".obsidian", ".trash", ".git", ".stfolder", ".stversions"]

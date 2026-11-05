@@ -51,12 +51,15 @@ The expected structure is:
         ├── cad/                     (parametric / native CAD source)
         ├── stl/                     (mesh exports)
         ├── 3mf/                     (sliced output: .3mf, .gcode, .bgcode)
+        ├── sliced/                  (optional; written by the bambu-hub, e.g. <stem>.gcode.3mf)
         └── images/                  (previews; embedded in the project index)
 ```
 
 The folder-note convention names every folder's index after the folder itself (`projects/` → `projects.md`, `keychain/` → `keychain.md`). The vault root uses its own directory basename.
 
-A folder under `projects/` is recognized as a **project** if it directly contains any of: `cad/`, `stl/`, `3mf/`, or `images/`.
+A folder under `projects/` is recognized as a **project** if it directly contains any of: `cad/`, `stl/`, `3mf/`, `images/`, or `sliced/`.
+
+`sliced/` is an optional, hub-managed folder. The tool never scaffolds it (the bambu-hub creates it when it saves a sliced file) and never writes an index inside it. Its files are listed in a **Sliced (hub)** table right after the **Slicer (3MF / GCODE)** table, with the same File | Size | Modified columns. Unlike the other folders, every file in `sliced/` is listed (no extension filter; set `extensions.sliced` to restrict it).
 
 Projects can nest: `projects/<parent>/<child>/` with the same marker subdirs creates a sub-project. Both parent and child get their own folder-note index. The parent's index lists children under "Sub-projects" and excludes their files from parent tables.
 
@@ -78,7 +81,7 @@ Your hand-written prose, curated tables, photo commentary, etc. are preserved.
 
 **Idempotency**: If regenerated content matches the existing content byte-for-byte, the file is not rewritten. This protects file modification times from being unnecessarily updated (important for tools like Syncthing).
 
-**Protected files**: The tool only writes between the AUTO fences inside each folder's index file, and never modifies asset folders (`cad/`, `stl/`, `3mf/`, `images/`), `.obsidian/`, or `.stignore`.
+**Protected files**: The tool only writes between the AUTO fences inside each folder's index file, and never modifies asset folders (`cad/`, `stl/`, `3mf/`, `images/`, `sliced/`), `.obsidian/`, or `.stignore`.
 
 ## Filament Linking (Spoolman Integration)
 
@@ -110,7 +113,8 @@ Config resolution order (first match wins):
 4. Built-in defaults
 
 See `outline.toml.example` in the repo for all available options, including:
-- File extensions for CAD, STL, 3MF, and image files
+- File extensions for CAD, STL, 3MF, image, and sliced (hub) files
+- Folder names for each asset type, including `sliced` (hub output)
 - Vault layout (project root folder, subdirectory names)
 - Exclusions (directories and glob patterns to skip)
 - Render settings (fence markers, header comment)

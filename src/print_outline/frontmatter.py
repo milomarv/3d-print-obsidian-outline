@@ -119,9 +119,7 @@ def ensure_default_tags(path: Path) -> bool:
 
     legacy_priority_present = "priority" in data
     needs_tags_rewrite = (
-        new_tags != existing
-        or not isinstance(raw_tags, list)
-        or _is_multiline_tags(block)
+        new_tags != existing or not isinstance(raw_tags, list) or _is_multiline_tags(block)
     )
 
     if not legacy_priority_present and not needs_tags_rewrite:

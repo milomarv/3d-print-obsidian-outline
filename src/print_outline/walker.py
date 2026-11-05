@@ -83,15 +83,16 @@ def _walk(
 
 
 def ensure_marker_subdirs(folder: Path, config: Config) -> list[str]:
-    """Create any missing marker subdirs (`cad/`, `stl/`, `3mf/`, `images/`) in `folder`.
+    """Create any missing scaffold subdirs (`cad/`, `stl/`, `3mf/`, `images/`) in `folder`.
 
     Returns the names actually created; idempotent — existing subdirs are left
     untouched. Lets the CLI scaffold a project folder so the user can drop files
     straight into a synced `images/` (or CAD/STL/3MF) instead of the folder being
-    missing first. Syncthing propagates the empty dirs to every device.
+    missing first. Syncthing propagates the empty dirs to every device. Hub-written
+    `sliced/` is never scaffolded.
     """
     created: list[str] = []
-    for sub in config.marker_subdirs:
+    for sub in config.scaffold_subdirs:
         target = folder / sub
         if not target.is_dir():
             target.mkdir(parents=True, exist_ok=True)
@@ -104,7 +105,7 @@ def collect_marker_files(
     subdir: str,
     valid_exts: list[str],
 ) -> list[Path]:
-    """Return files inside `<project>/<subdir>` matching any extension."""
+    """Return files in `<project>/<subdir>` matching `valid_exts`; empty accepts all."""
     root = project / subdir
     if not root.is_dir():
         return []
@@ -113,7 +114,7 @@ def collect_marker_files(
     for path in sorted(root.rglob("*")):
         if not path.is_file():
             continue
-        if path.suffix.lower() not in accepted_exts:
+        if accepted_exts and path.suffix.lower() not in accepted_exts:
             continue
         matches.append(path)
     return matches

@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+UNSCAFFOLDED_KINDS = frozenset({"sliced"})
+
 DEFAULTS: dict[str, Any] = {
     "extensions": {
         "cad": [
@@ -35,6 +37,7 @@ DEFAULTS: dict[str, Any] = {
         "stl": ["stl"],
         "slice": ["3mf", "gcode", "bgcode"],
         "image": ["jpg", "jpeg", "png", "heic", "webp"],
+        "sliced": [],
     },
     "layout": {
         "project_root": "projects",
@@ -44,6 +47,7 @@ DEFAULTS: dict[str, Any] = {
             "stl": "stl",
             "slice": "3mf",
             "image": "images",
+            "sliced": "sliced",
         },
     },
     "exclude": {
@@ -88,6 +92,12 @@ class Config:
     @property
     def marker_subdirs(self) -> tuple[str, ...]:
         return tuple(self.project_subdirs.values())
+
+    @property
+    def scaffold_subdirs(self) -> tuple[str, ...]:
+        return tuple(
+            sub for kind, sub in self.project_subdirs.items() if kind not in UNSCAFFOLDED_KINDS
+        )
 
 
 def _deep_merge(base: dict[str, Any], over: dict[str, Any]) -> dict[str, Any]:
