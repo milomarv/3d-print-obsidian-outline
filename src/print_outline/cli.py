@@ -6,7 +6,6 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from print_outline.config import Config, resolve_config
 from print_outline.fence import FenceLayout
@@ -16,6 +15,7 @@ from print_outline.manifest import MANIFEST_STATES, manifest_path, render_priori
 from print_outline.render import WriteResult, write_with_fence
 from print_outline.spoolman import SpoolmanClient
 from print_outline.walker import (
+    Folder,
     ensure_marker_subdirs,
     index_filename_for,
     is_excluded_dir,
@@ -23,9 +23,6 @@ from print_outline.walker import (
     under_project_root,
     walk_vault,
 )
-
-if TYPE_CHECKING:
-    from print_outline.walker import Folder
 
 _PROJECT_FRONTMATTER_DEFAULTS = {"filaments": "[]", "tags": "[prio/0, state/idea]"}
 
@@ -40,6 +37,12 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("vault", type=Path, help="Path to the vault root.")
     parser.add_argument("--config", type=Path, default=None, help="Override config file path.")
     parser.add_argument("--dry-run", action="store_true", help="Print diffs; do not write.")
+    parser.add_argument(
+        "--folder",
+        type=Path,
+        default=None,
+        help="Regenerate only the folder note for this path relative to the vault.",
+    )
     parser.add_argument("--no-spoolman", action="store_true", help="Skip Spoolman lookups.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose logging.")
     return parser.parse_args(argv)
@@ -145,6 +148,67 @@ def _build_spoolman(config: Config, *, disabled_by_flag: bool) -> SpoolmanClient
         return None
 
 
+def _run_generation(
+    vault: Path,
+    config: Config,
+    *,
+    dry_run: bool,
+    target_folder: Path | None,
+    disabled_by_flag: bool,
+) -> None:
+    layout = FenceLayout(
+        header=config.header,
+        fence_begin=config.fence_begin,
+        fence_end=config.fence_end,
+    )
+    spoolman = _build_spoolman(config, disabled_by_flag=disabled_by_flag)
+    if target_folder is None:
+        _scaffold_project_dirs(vault, config, dry_run=dry_run)
+    folders = (
+        [Folder(path=target_folder, is_project=False)]
+        if target_folder is not None
+        else walk_vault(vault, config)
+    )
+    changed_count = 0
+    total_count = 0
+    for folder in folders:
+        total_count += 1
+        index_path = folder.path / index_filename_for(folder.path, vault)
+        if target_folder is None and not dry_run:
+            if is_project(folder.path, vault, config):
+                ensure_project_frontmatter(index_path, _PROJECT_FRONTMATTER_DEFAULTS)
+            ensure_default_tags(index_path)
+        body = generate_index(
+            IndexInputs(
+                folder=folder.path,
+                vault=vault,
+                config=config,
+                spoolman=spoolman,
+            ),
+        )
+        result = write_with_fence(index_path, body, layout, dry_run=dry_run)
+        _emit_result(result, dry_run=dry_run)
+        if result.changed:
+            changed_count += 1
+    if target_folder is None:
+        for state in MANIFEST_STATES:
+            result = write_with_fence(
+                manifest_path(vault, config, state),
+                render_priorities_manifest(vault, config, state),
+                layout,
+                dry_run=dry_run,
+            )
+            _emit_result(result, dry_run=dry_run)
+            if result.changed:
+                changed_count += 1
+    logger.info(
+        "%s %d/%d folders",
+        "would update" if dry_run else "updated",
+        changed_count,
+        total_count,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(sys.argv[1:] if argv is None else argv)
     logging.basicConfig(
@@ -157,63 +221,26 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     config = resolve_config(vault, args.config)
+    target_folder = None
+    if args.folder is not None:
+        if args.folder.is_absolute():
+            logger.error("--folder must be a path relative to the vault")
+            return 2
+        target_folder = (vault / args.folder).resolve()
+        if not target_folder.is_relative_to(vault) or not target_folder.is_dir():
+            logger.error("--folder must name an existing directory inside the vault")
+            return 2
     root_error = _vault_root_error(vault, config)
     if root_error is not None:
         logger.error("%s", root_error)
         return 2
 
-    layout = FenceLayout(
-        header=config.header,
-        fence_begin=config.fence_begin,
-        fence_end=config.fence_end,
-    )
-    spoolman = _build_spoolman(config, disabled_by_flag=args.no_spoolman)
-
-    _scaffold_project_dirs(vault, config, dry_run=args.dry_run)
-
-    changed_count = 0
-    total_count = 0
-    for folder in walk_vault(vault, config):
-        total_count += 1
-        index_path = folder.path / index_filename_for(folder.path, vault)
-        if not args.dry_run:
-            if is_project(folder.path, vault, config):
-                ensure_project_frontmatter(index_path, _PROJECT_FRONTMATTER_DEFAULTS)
-            ensure_default_tags(index_path)
-        body = generate_index(
-            IndexInputs(
-                folder=folder.path,
-                vault=vault,
-                config=config,
-                spoolman=spoolman,
-            ),
-        )
-        result = write_with_fence(
-            index_path,
-            body,
-            layout,
-            dry_run=args.dry_run,
-        )
-        _emit_result(result, dry_run=args.dry_run)
-        if result.changed:
-            changed_count += 1
-
-    for state in MANIFEST_STATES:
-        manifest_result = write_with_fence(
-            manifest_path(vault, config, state),
-            render_priorities_manifest(vault, config, state),
-            layout,
-            dry_run=args.dry_run,
-        )
-        _emit_result(manifest_result, dry_run=args.dry_run)
-        if manifest_result.changed:
-            changed_count += 1
-
-    logger.info(
-        "%s %d/%d folders",
-        "would update" if args.dry_run else "updated",
-        changed_count,
-        total_count,
+    _run_generation(
+        vault,
+        config,
+        dry_run=args.dry_run,
+        target_folder=target_folder,
+        disabled_by_flag=args.no_spoolman,
     )
     return 0
 

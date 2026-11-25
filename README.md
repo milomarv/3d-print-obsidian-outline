@@ -65,6 +65,24 @@ Projects can nest: `projects/<parent>/<child>/` with the same marker subdirs cre
 
 Image galleries render as a responsive 2-column HTML grid with embedded images. To enable Obsidian's graph view to pick up image relationships, a hidden `<details>` block with bare `[[wikilinks]]` to each image is included below the gallery.
 
+Folders named `timelapses/` render their direct MP4 files in a **Timelapses** section, grouped by the month parsed from `video_YYYY-MM-DD_HH-MM-SS.mp4` filenames. Every MP4 gets a link; the newest ten with valid filename dates also get embedded players. Dates are filename dates, not verified recording timestamps. Other MP4 names appear under **Undated** and are not embedded.
+
+Preview updates safely before writing to a vault:
+
+```bash
+outline /path/to/3d-print --dry-run
+```
+
+Regenerate only one existing folder note, without scaffolding folders or updating
+other notes and manifests:
+
+```bash
+outline /path/to/3d-print --folder timelapses
+```
+
+`--folder` takes a path relative to the vault root and must name an existing
+directory inside the vault.
+
 ## Fence-Marker Contract
 
 The tool writes generated content between HTML comment markers and never modifies anything outside:

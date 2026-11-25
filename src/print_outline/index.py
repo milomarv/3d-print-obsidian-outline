@@ -7,7 +7,9 @@ image gallery, sub-project links, and a Spoolman-backed filaments table.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from print_outline.formatting import human_size, iso_date, md_table_row, wikilink_target
@@ -74,6 +76,8 @@ def _link_with_priority(child: Path, vault: Path, config: Config) -> str:
 
 def _non_project_sections(inputs: IndexInputs) -> Iterable[str]:
     cfg = inputs.config
+    if inputs.folder == inputs.vault / "timelapses":
+        yield from _timelapse_section(inputs.folder, inputs.vault)
     children = child_dirs_for_index(inputs.folder, cfg)
     own_index = index_filename_for(inputs.folder, inputs.vault)
 
@@ -98,6 +102,67 @@ def _non_project_sections(inputs: IndexInputs) -> Iterable[str]:
             target = wikilink_target(note.with_suffix("").relative_to(inputs.vault))
             lines.append(f"- [[{target}|{stem}]]")
         yield "\n".join(lines)
+
+
+def _timelapse_section(folder: Path, vault: Path) -> Iterable[str]:
+    dated, undated = _timelapse_entries(folder)
+    if not dated and not undated:
+        return
+
+    ordered = sorted(dated, key=lambda item: item[0], reverse=True)
+    months: dict[str, list[tuple[datetime, Path]]] = {}
+    for item in ordered:
+        months.setdefault(item[0].strftime("%Y-%m"), []).append(item)
+
+    lines = ["## Timelapses"]
+    embedded = {path for _, path in ordered[:10]}
+    for month, entries in months.items():
+        lines.extend(["", f"### {month}"])
+        lines.extend(_render_timelapse_entries(entries, vault, embedded))
+    if undated:
+        lines.extend(["", "### Undated"])
+        for path in sorted(undated, key=lambda item: item.name.casefold()):
+            target = wikilink_target(path.relative_to(vault))
+            lines.append(f"- Filename date: unknown — [[{target}|{path.name}]]")
+    yield "\n".join(lines)
+
+
+def _timelapse_entries(folder: Path) -> tuple[list[tuple[datetime, Path]], list[Path]]:
+    pattern = re.compile(r"^video_(\d{4}-\d{2}-\d{2})_(\d{2}-\d{2}-\d{2})\.mp4$")
+    dated: list[tuple[datetime, Path]] = []
+    undated: list[Path] = []
+    for path in folder.iterdir():
+        if not path.is_file() or path.suffix.lower() != ".mp4":
+            continue
+        match = pattern.fullmatch(path.name)
+        try:
+            timestamp = (
+                datetime.fromisoformat(f"{match[1]}T{match[2].replace('-', ':')}+00:00")
+                if match
+                else None
+            )
+        except ValueError:
+            timestamp = None
+        if timestamp is None:
+            undated.append(path)
+        else:
+            dated.append((timestamp, path))
+    return dated, undated
+
+
+def _render_timelapse_entries(
+    entries: list[tuple[datetime, Path]],
+    vault: Path,
+    embedded: set[Path],
+) -> list[str]:
+    lines: list[str] = []
+    for timestamp, path in entries:
+        target = wikilink_target(path.relative_to(vault))
+        label = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        lines.append(f"- Filename date: {label} — [[{target}|{path.name}]]")
+        if path in embedded:
+            lines.append(f"  ![[{target}]]")
+    return lines
 
 
 def _child_index_link(child: Path, vault: Path) -> str:
